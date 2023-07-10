@@ -1,44 +1,86 @@
-name: Deployment
+name: Website Deployment
 on:
   push:
     branches:
       - main
-      - dev
-env: # workflow level ENV
-  MONGODB_DB_NAME:  gha-demo
 jobs:
-  test:
-    environment: testing
-    env:  # job level ENV
-      MONGODB_CLUSTER_ADDRESS:  cluster.mongo.net # dummy addreess
-      MONGODB_USERNAME: ${{ scerets.MONGODB_USERNAME }} # secrets is the context object
-      MONGODB_PASSWORD: ${{ scerets.MONGODB_PASSWORD }}
-      PORT: 8000
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Get Code
+      - name: Get code
         uses: actions/checkout@v3
       - name: Cache dependencies
+        id: cache
         uses: actions/cache@v3
         with:
           path: ~/.npm
-          key: npm-deps-${{ hashFiles('**/package-lock.json') }}
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
       - name: Install dependencies
         run: npm ci
-      - name: Run server
-        run: npm start & npx wait-on http://127.0.0.1:${PORT}
-      - name: Run tests
-        run: npm test
-      - name: Output information
-        run: |
-          echo "MONGODB_USERNAME: ${{ env.MONGODB_USERNAME}}"
-  deploy:
+      - name: Lint code
+        run: npm run lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Test code
+        run: npm run test
+        id: run-tests
+      - name: Upload test report
+        if: failure() && steps.run-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: test.json
+  build:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Output information
-        run: |        
-          echo "MONGODB_USERNAME: ${{ env.MONGODB_USERNAME}}"  
-          echo "MONGODB_DB_NAME:  $MONGODB_DB_NAME" 
-        # In first echo the MONGODB_USERNAME will not be available in this job 
-        # In second echo the MONGODB_DB_NAME will be available in this job 
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Build website
+        id: build-website
+        run: npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-files
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist-files
+      - name: Output contents
+        run: ls
+      - name: Deploy
+        run: echo "Deploying..."
+  report:
+    needs: [lint, deploy]
+    if: failure()
+    runs-on:  ubuntu-latest
+    steps:
+      - name: Output Information
+        run:  |
+          echo "Something went wrong"
+          echo "${{ toJSON(github) }}"
