@@ -1,9 +1,0 @@
-name: First Workflow
-on: workflow_dispatch
-jobs: 
-  info:
-    runs-on:  ubuntu-latest
-    steps:  
-      - name: Output Github Context
-        run:  echo "${{ toJSON(github) }}" # to get the metadata, we use context objects
-
