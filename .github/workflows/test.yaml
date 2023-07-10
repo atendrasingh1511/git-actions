@@ -9,6 +9,11 @@ jobs:
     steps:
       - name: Get code
         uses: actions/checkout@v3
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm # NPM use this path for storing cache things. now we want to cache this path to use by other jobs 
+          key:  deps-node-modules-${{ hashFiles('**/package-lock.json') }} # if the hash key get changed then it will then (npm ci) again install dependencoes in next step
       - name: Install dependencies
         run: npm ci
       - name: Lint code
@@ -19,17 +24,22 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     outputs:  
-      script-file:  ${{ steps.publish.outputs.script-file-js }} # here script-file is arbitrary, you can use any name
+      script-file:  ${{ steps.publish.outputs.script-file }} # here script-file is arbitrary, you can use any name
     steps:
       - name: Get code
         uses: actions/checkout@v3
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm # NPM use this path for storing cache things. now we want to cache this path to use by other jobs 
+          key:  deps-node-modules-${{ hashFiles('**/package-lock.json') }} # if the hash key get changed then it will then (npm ci) again install dependencoes in next step
       - name: Install dependencies
         run: npm ci
       - name: Build website
         run: npm run build
       - name: Publish Js filename
         id: publish # any id name you can take
-        run: find dist/assets/*.js  -type f  -execdir echo  'script-file-js={}'  >>  $GITHUB_OUTPUT  ';' # here script-file is arbitrary, you can use any name
+        run: find dist/assets/*.js  -type f  -execdir echo  'script-file={}'  >>  $GITHUB_OUTPUT  ';' # here script-file is arbitrary, you can use any name
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -49,6 +59,6 @@ jobs:
       - name: Output contents
         run:  ls
       - name: Output Filename
-        run:  echo "${{ needs.build.outputs.script-file }}" # needs is the context object
+        run:  echo "${{ needs.build.outputs.script-file }}"
       - name: Deploy
         run: echo "Deploying..."
