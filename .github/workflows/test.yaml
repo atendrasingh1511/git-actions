@@ -1,3 +1,4 @@
+# To Skip workflow in your commit meesages mention [skip ci] or [skip actions] 
 name: First Workflow
 on:
   pull_request:
