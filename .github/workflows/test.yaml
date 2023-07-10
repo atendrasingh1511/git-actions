@@ -1,24 +1,9 @@
 name: First Workflow
-on: [push, workflow_dispatch] 
+on: workflow_dispatch
 jobs: 
-  first_job:
+  info:
     runs-on:  ubuntu-latest
     steps:  
-      - name: Get Code
-        uses: actions/checkout@v3
-      - name: Install Dependencies
-        run: npm ci
-      - name: Run Test
-        run: npm test
-  deploy:
-    needs: first_job
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Code
-        uses: actions/checkout@v3
-      - name: Install Dependencies
-        run: npm ci
-      - name: Build Project
-        run:  npm run build
-      - name: Deploy
-        run:  echo "deploying..."
+      - name: Output Github Context
+        run:  echo "${{ toJSON(github) }}" # to get the metadata, we use context objects
+
