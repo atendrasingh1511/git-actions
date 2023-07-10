@@ -1,26 +1,47 @@
-# To Skip workflow in your commit meesages mention [skip ci] or [skip actions] 
-name: First Workflow
+name: Aftifacts workflow
 on:
-  pull_request:
-    types:
-      - opened
-  workflow_dispatch:
   push:
     branches:
-      - 9/master
-      - 'dev-*'
-      - 'feat/**'
-    #paths-ignore:
-    #  - '.github/workflows/*' # this means you have changed any file in workflows folder then this push workflow will not be triggered
-    paths:
-      - '.github/workflows/*' # this means if you have not changed any file in workflows folder then this push workflow will not be triggered
-jobs: 
-  deploy:
-    runs-on:  ubuntu-latest
-    steps:  
-      - name: Get Code
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
         uses: actions/checkout@v3
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
-      - name: Deploy Project
-        run: echo "deploying..."
+      - name: Lint code
+        run: npm run lint
+      - name: Test code
+        run: npm run test
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Build website
+        run: npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-files
+          path: dist # here the dist folder files (build files) will be store as artifacts
+        #  path: |
+        #    dist
+        #    package.json  # we can provide files
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist-files
+      - name: Output contents
+        run:  ls
+      - name: Deploy
+        run: echo "Deploying..."
