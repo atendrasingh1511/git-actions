@@ -1,64 +1,44 @@
-name: Deploy website
+name: Deployment
 on:
   push:
     branches:
-      - master
+      - main
+      - dev
+env: # workflow level ENV
+  MONGODB_DB_NAME:  gha-demo
 jobs:
   test:
+    environment: testing
+    env:  # job level ENV
+      MONGODB_CLUSTER_ADDRESS:  cluster.mongo.net # dummy addreess
+      MONGODB_USERNAME: ${{ scerets.MONGODB_USERNAME }} # secrets is the context object
+      MONGODB_PASSWORD: ${{ scerets.MONGODB_PASSWORD }}
+      PORT: 8000
     runs-on: ubuntu-latest
     steps:
-      - name: Get code
+      - name: Get Code
         uses: actions/checkout@v3
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
-          path: ~/.npm # NPM use this path for storing cache things. now we want to cache this path to use by other jobs 
-          key:  deps-node-modules-${{ hashFiles('**/package-lock.json') }} # if the hash key get changed then it will then (npm ci) again install dependencoes in next step
+          path: ~/.npm
+          key: npm-deps-${{ hashFiles('**/package-lock.json') }}
       - name: Install dependencies
         run: npm ci
-      - name: Lint code
-        run: npm run lint
-      - name: Test code
-        run: npm run test
-  build:
+      - name: Run server
+        run: npm start & npx wait-on http://127.0.0.1:${PORT}
+      - name: Run tests
+        run: npm test
+      - name: Output information
+        run: |
+          echo "MONGODB_USERNAME: ${{ env.MONGODB_USERNAME}}"
+  deploy:
     needs: test
     runs-on: ubuntu-latest
-    outputs:  
-      script-file:  ${{ steps.publish.outputs.script-file }} # here script-file is arbitrary, you can use any name
     steps:
-      - name: Get code
-        uses: actions/checkout@v3
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm # NPM use this path for storing cache things. now we want to cache this path to use by other jobs 
-          key:  deps-node-modules-${{ hashFiles('**/package-lock.json') }} # if the hash key get changed then it will then (npm ci) again install dependencoes in next step
-      - name: Install dependencies
-        run: npm ci
-      - name: Build website
-        run: npm run build
-      - name: Publish Js filename
-        id: publish # any id name you can take
-        run: find dist/assets/*.js  -type f  -execdir echo  'script-file={}'  >>  $GITHUB_OUTPUT  ';' # here script-file is arbitrary, you can use any name
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist-files
-          path: dist
-        #  path: |
-        #    dist
-        #    package.json  # we can provide files
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dist-files
-      - name: Output contents
-        run:  ls
-      - name: Output Filename
-        run:  echo "${{ needs.build.outputs.script-file }}"
-      - name: Deploy
-        run: echo "Deploying..."
+      - name: Output information
+        run: |        
+          echo "MONGODB_USERNAME: ${{ env.MONGODB_USERNAME}}"  
+          echo "MONGODB_DB_NAME:  $MONGODB_DB_NAME" 
+        # In first echo the MONGODB_USERNAME will not be available in this job 
+        # In second echo the MONGODB_DB_NAME will be available in this job 
