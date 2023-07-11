@@ -1,28 +1,77 @@
-name: Matrix Demo
-on: push
+name: Website Deployment
+on:
+  push:
+    branches:
+      - main
 jobs:
-  build:
-    continue-on-error:  true # so that we can check with what version and operating system our code is running. 
-    #if we do not write this flag, on error the execution will stop and we will not know the results.
-    strategy:
-      matrix:
-        node-version: [12,14,16] # we can take any name
-        operating-system: [ubuntu-latest, windows-latest] # we can take any name
-        include:
-          - node-version: 18
-            operating-system: ubuntu-latest
-        exclude:
-          - node-version: 12
-            operating-system: windows-latest
-    runs-on:  ${{ matrix.operating-system }}
+  lint:
+    runs-on: ubuntu-latest
     steps:
-      - name: Get Code
-        uses:  actions/checkout@v3
-      - name: Install Node Js
-        uses: actions/setup-node@v3
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          path: ~/.npm
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
       - name: Install dependencies
-        run:  npm ci
-      - name: Build Project
-        run:  npm run build
+        run: npm ci
+      - name: Lint code
+        run: npm run lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Test code
+        run: npm run test
+        id: run-tests
+      - name: Upload test report
+        if: failure() && steps.run-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: test.json
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Build website
+        id: build-website
+        run: npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-files
+          path: dist
+  deploy:
+    needs: build
+    uses: ./.github/workflows/reusable.yaml
+  report:
+    needs: [lint, deploy]
+    if: failure()
+    runs-on:  ubuntu-latest
+    steps:
+      - name: Output Information
+        run:  |
+          echo "Something went wrong"
+          echo "${{ toJSON(github) }}"
