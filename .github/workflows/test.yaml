@@ -1,89 +1,22 @@
-name: Website Deployment
-on:
-  push:
-    branches:
-      - main
+name: Matrix Demo
+on: push
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get code
-        uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
-      - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - name: Lint code
-        run: npm run lint
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get code
-        uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
-      - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - name: Test code
-        contniue-on-error: true
-        run: npm run test
-        id: run-tests
-      - name: Upload test report
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-report
-          path: test.json
   build:
-    needs: test
-    runs-on: ubuntu-latest
+    #continue-on-error:  true # so that we can check with what version and operating system our code is running. 
+    #if we do not write this flag, on error the execution will stop and we will not know the results.
+    strategy:
+      matrix:
+        node-version: [12,14,16] 
+        operating-system: [ubuntu-latest, windows-latest] 
+    runs-on:  ${{ matrix.operating-system }}
     steps:
-      - name: Get code
-        uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v3
+      - name: Get Code
+        uses:  actions/checkout@v3
+      - name: Install Node Js
+        uses: actions/setup-node@v3
         with:
-          path: node_modules
-          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+          node-version: ${{ matrix.node-version }}
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - name: Build website
-        id: build-website
-        run: npm run build
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist-files
-          path: dist
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dist-files
-      - name: Output contents
-        run: ls
-      - name: Deploy
-        run: echo "Deploying..."
-  report:
-    needs: [lint, deploy]
-    if: failure()
-    runs-on:  ubuntu-latest
-    steps:
-      - name: Output Information
-        run:  |
-          echo "Something went wrong"
-          echo "${{ toJSON(github) }}"
+        run:  npm ci
+      - name: Build Project
+        run:  npm run build
