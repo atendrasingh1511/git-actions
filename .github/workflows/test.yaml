@@ -2,12 +2,18 @@ name: Matrix Demo
 on: push
 jobs:
   build:
-    #continue-on-error:  true # so that we can check with what version and operating system our code is running. 
+    continue-on-error:  true # so that we can check with what version and operating system our code is running. 
     #if we do not write this flag, on error the execution will stop and we will not know the results.
     strategy:
       matrix:
-        node-version: [12,14,16] 
-        operating-system: [ubuntu-latest, windows-latest] 
+        node-version: [12,14,16] # we can take any name
+        operating-system: [ubuntu-latest, windows-latest] # we can take any name
+        include:
+          - node-version: 18
+            operating-system: ubuntu-latest
+        exclude:
+          - node-version: 12
+            operating-system: windows-latest
     runs-on:  ${{ matrix.operating-system }}
     steps:
       - name: Get Code
