@@ -1,8 +1,21 @@
 name: Reusable deploy
-on: workflow_call
+on: 
+  workflow_call:
+    inputs:
+      artifact-name: #any name we can use
+        description:  The name of the deployable artifact files
+        required: false
+        default: dist # we have used the name dist-files in test.yaml workflow so here default dist will not work that's why we will have to pass the artifact-name from the test.yaml file to make it working
+        type: string
 jobs:
   deploy:
     runs-on:  ubuntu-latest
     steps:
+      - name: Get Code
+        uses: actions/download-artifact@v3
+        with: 
+          name: ${{ inputs.artifact-name }}
+      - name: List files
+        run:  ls
       - name: Output Information
         run:  echo "Output information"
