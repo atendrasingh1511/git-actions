@@ -1,22 +1,16 @@
-name: Website Deployment
+name: Deployment
 on:
   push:
     branches:
-      - master
+      - main
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Get code
         uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
-      - name: Install dependencies
-        run: npm ci
+      - name: Load & cache dependencies
+        uses: ./.github/actions/cached-deps
       - name: Lint code
         run: npm run lint
   test:
@@ -24,19 +18,13 @@ jobs:
     steps:
       - name: Get code
         uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
-      - name: Install dependencies
-        run: npm ci
+      - name: Load & cache dependencies
+        uses: ./.github/actions/cached-deps
       - name: Test code
-        continue-on-error: true
-        run: npm run test
         id: run-tests
+        run: npm run test
       - name: Upload test report
+        if: failure() && steps.run-tests.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
           name: test-report
@@ -47,16 +35,9 @@ jobs:
     steps:
       - name: Get code
         uses: actions/checkout@v3
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
-      - name: Install dependencies
-        run: npm ci
+       - name: Load & cache dependencies
+        uses: ./.github/actions/cached-deps
       - name: Build website
-        id: build-website
         run: npm run build
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -65,23 +46,16 @@ jobs:
           path: dist
   deploy:
     needs: build
-    uses: './.github/workflows/reusable.yaml'
-    with:
-      artifact-name:  dist-files
-    #secrets:
-    #  some-secret: ${{secrets.some-secret}}
-  print-deploy-job:
-    needs:  deploy
-    runs-on:  ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Print deploy output
-        run:  echo "${{needs.deploy.outputs.result}}"
-  report:
-    needs: [lint, deploy]
-    if: failure()
-    runs-on:  ubuntu-latest
-    steps:
-      - name: Output Information
-        run:  |
-          echo "Something went wrong"
-          echo "${{ toJSON(github) }}"
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Get build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist-files
+          path: ./dist
+      - name: Output contents
+        run: ls
+      - name: Deploy site
+        run: echo "Deploying..."
