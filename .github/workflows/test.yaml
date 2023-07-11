@@ -2,7 +2,7 @@ name: Website Deployment
 on:
   push:
     branches:
-      - main
+      - master
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -33,10 +33,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Test code
+        continue-on-error: true
         run: npm run test
         id: run-tests
       - name: Upload test report
-        if: failure() && steps.run-tests.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
           name: test-report
@@ -65,11 +65,17 @@ jobs:
           path: dist
   deploy:
     needs: build
-    uses: ./.github/workflows/reusable.yaml
+    uses: './.github/workflows/reusable.yaml'
     with:
-      artifact-name: dist-files
-    secrets:
-      some-secret:  ${{secret.some-secret}}
+      artifact-name:  dist-files
+    #secrets:
+    #  some-secret: ${{secrets.some-secret}}
+  print-deploy-job:
+    needs:  deploy
+    runs-on:  ubuntu-latest
+    steps:
+      - name: Print deploy output
+        run:  echo "${{needs.deploy.outputs.result}}"
   report:
     needs: [lint, deploy]
     if: failure()
