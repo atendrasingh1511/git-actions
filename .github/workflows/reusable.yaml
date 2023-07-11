@@ -3,10 +3,13 @@ on:
   workflow_call:
     inputs:
       artifact-name: #any name we can use
-        description:  The name of the deployable artifact files
+        description:  The name of the deployableartifact files
         required: false
-        default: dist # we have used the name dist-files in test.yaml workflow so here default dist will not work that's why we will have to pass the artifact-name from the test.yaml file to make it working
+        default: dist
         type: string
+    #secrets:
+    #  some-secret:
+    #    required: false
 jobs:
   deploy:
     runs-on:  ubuntu-latest
