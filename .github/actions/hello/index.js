@@ -13,6 +13,8 @@ try {
 	console.log(`Hello ${name}`);
 
 	const time = new Date();
+    console.log(`Time ${time.toTimeString()}`);
+
 	//core.setOutput("time", time.toTimeString());
 
 	console.log(JSON.stringify(github, null, '\t'));
