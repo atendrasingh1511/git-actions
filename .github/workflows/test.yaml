@@ -12,7 +12,7 @@ on:
     #paths-ignore:
     #  - '.github/workflows/*' # this means you have changed any file in workflows folder then this push workflow will not be triggered
     paths:
-      - '.github/workflows/*' # this means if you have not changed any file in workflows folder then this push workflow will not be triggered
+      - '.github/workflows/*' # this means if you have changed any file in workflows folder only then this push workflow will be triggered
 jobs: 
   deploy:
     runs-on:  ubuntu-latest
